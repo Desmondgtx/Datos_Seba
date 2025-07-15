@@ -13,7 +13,7 @@ library(tidyverse)
 
 
 # Cargar datos
-datos_clean_v2 <- read.csv("datos_clean_v2.csv")
+datos <- read.csv("datos_clean_v2.csv")
 
 
 
