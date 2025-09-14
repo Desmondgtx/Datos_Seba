@@ -12,6 +12,7 @@ library(ggplot2)
 
 ## Data José
 datos_long_v2_trab <- read_csv("datos_long_v2_trab.csv")
+
 alldata = data.frame(as.factor(datos_long_v2_trab$ID_check),
                      as.numeric(as.character(datos_long_v2_trab$trail)), 
                      as.factor(datos_long_v2_trab$Choise), 
@@ -19,6 +20,7 @@ alldata = data.frame(as.factor(datos_long_v2_trab$ID_check),
                      as.numeric(as.character(datos_long_v2_trab$effort)),
                      as.factor(datos_long_v2_trab$condition),
                      as.factor(datos_long_v2_trab$GRUPO))
+
 colnames(alldata)<-c('ID_check','c.trial', 'choise', 'c.reward','c.effort','condition','GRUPO')
 
 
