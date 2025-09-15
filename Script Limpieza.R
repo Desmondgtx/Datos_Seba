@@ -168,7 +168,7 @@ formatear_id = function(id) {
   sprintf("%04d", as.integer(id))
 }
 
-# AApply function on column "id"
+# Apply function on column "id"
 participantes_ID$id = sapply(participantes_ID$id, formatear_id)
 
 # Join dataset by id column
@@ -239,12 +239,14 @@ formatear_id = function(ID_check) {
 # Apply Function
 datos$ID_check = sapply(datos$ID_check, formatear_id)
 
+
 # Extract only the columns of interest
 datos = datos %>% select(ID_check, grupo,
                           starts_with("SELF"), starts_with("OTHER"),
                           matches("^X\\d+_fail_feedback_timing_Page\\.Submit"),
                           Comp2_Q1, Comp2_Q2,
                           X49_attention_check)
+
 
 # Attention check (stimulus N°49)
 respuestas_4 = sum(datos$X49_attention_check == 4, na.rm = TRUE) # Respondieron 60 participantes
@@ -402,6 +404,8 @@ datos = datos %>%
   )
 
 
+
+
 # Create new columns with Comp Q1 & Q2 results
 datos = datos %>%
   mutate(resultados_Comp = case_when(
@@ -411,6 +415,8 @@ datos = datos %>%
   )) %>%
   # Put this new columns just after Comp_Q2
   relocate(resultados_Comp, .after = Comp2_Q2)
+
+
 
 # Delete last column
 datos = datos[, -247]
@@ -434,7 +440,23 @@ for(i in 1:48) {
     ))
 }
 
-# Save Dataset
+
+
+# Renombrar todas las columnas de fail_feedback_timing_Page.Submit
+for(i in 1:49) {
+  # Nombre original
+  old_name <- paste0("X", i, "_fail_feedback_timing_Page.Submit")
+  # Nombre nuevo con formato de dos dígitos
+  new_name <- sprintf("fallo_%02d", i)
+  
+  # Renombrar si la columna existe
+  if(old_name %in% names(datos)) {
+    names(datos)[names(datos) == old_name] <- new_name
+  }
+}
+
+
+
 write.csv(datos, "datos_clean.csv")
 
 
@@ -521,19 +543,6 @@ datos_clean <- datos_clean %>%
   )
 
 
-# Renombrar todas las columnas de fail_feedback_timing_Page.Submit
-for(i in 1:49) {
-  # Nombre original
-  old_name <- paste0("X", i, "_fail_feedback_timing_Page.Submit")
-  # Nombre nuevo con formato de dos dígitos
-  new_name <- sprintf("fallo_%02d", i)
-  
-  # Renombrar si la columna existe
-  if(old_name %in% names(datos_clean)) {
-    names(datos_clean)[names(datos_clean) == old_name] <- new_name
-  }
-}
-
 # Guardar set de datos 
 write.csv(datos_clean, "datos_final.csv")
 
@@ -559,7 +568,134 @@ write.csv(datos_clean, "datos_final.csv")
 
 
 
+datos = read_csv("datos_clean.csv")
 
+# Convertir de formato wide a long
+datos_long <- datos %>%
+  # Seleccionar solo las columnas relevantes para la transformación
+  select(ID_check, grupo, 
+         matches("^condicion_(SELF|OTHER)_\\d+$"),
+         matches("^reward_\\d+_\\d+$"),
+         matches("^esfuerzo_\\d+_\\d+$"),
+         matches("^fallo_\\d+$")) %>%
+  
+  # Crear una fila por participante para procesar
+  rowwise() %>%
+  
+  # Para cada participante, crear los 48 trials
+  summarise(
+    ID_check = ID_check,
+    grupo = grupo,
+    trials = list(1:48),
+    .groups = 'drop'
+  ) %>%
+  unnest(trials) %>%
+  
+  # Extraer valores para cada trial
+  mutate(
+    trial_str = sprintf("%02d", trials),
+    
+    # Obtener condición (SELF o OTHER)
+    condicion = map2_dbl(ID_check, trial_str, function(id, t) {
+      col_name <- if(as.numeric(t) <= 24) {
+        paste0("condicion_SELF_", t)
+      } else {
+        paste0("condicion_OTHER_", t)
+      }
+      datos[datos$ID_check == id, col_name][[1]]
+    }),
+    
+    # Obtener reward
+    reward_val = map2_dbl(ID_check, trial_str, function(id, t) {
+      # Buscar columna que contenga reward y termine con el número de trial
+      col_pattern <- paste0("reward_\\d+_", t, "$")
+      col_name <- grep(col_pattern, names(datos), value = TRUE)[1]
+      if(!is.na(col_name)) {
+        val <- datos[datos$ID_check == id, col_name][[1]]
+        # Extraer el valor de reward del nombre de la columna
+        as.numeric(str_extract(col_name, "\\d+(?=_\\d+$)"))
+      } else {
+        NA_real_
+      }
+    }),
+    
+    # Obtener esfuerzo
+    esfuerzo_val = map2_dbl(ID_check, trial_str, function(id, t) {
+      col_pattern <- paste0("esfuerzo_\\d+_", t, "$")
+      col_name <- grep(col_pattern, names(datos), value = TRUE)[1]
+      if(!is.na(col_name)) {
+        val <- datos[datos$ID_check == id, col_name][[1]]
+        # Extraer el valor de esfuerzo del nombre de la columna
+        as.numeric(str_extract(col_name, "\\d+(?=_\\d+$)"))
+      } else {
+        NA_real_
+      }
+    }),
+    
+    # Obtener fallo
+    fallo_val = map2_dbl(ID_check, trial_str, function(id, t) {
+      col_name <- paste0("fallo_", t)
+      datos[datos$ID_check == id, col_name][[1]]
+    })
+  ) %>%
+  
+  # Aplicar transformaciones
+  mutate(
+    sub = ID_check,
+    
+    # Transformar decision
+    decision = case_when(
+      condicion == 1 ~ 1,  # Trabajar
+      condicion == 2 ~ 0,  # Descansar
+      condicion == 0 ~ 2,  # Omisión
+      TRUE ~ NA_integer_
+    ),
+    
+    # Transformar reward
+    reward = case_when(
+      reward_val == 2 ~ 1,
+      reward_val == 6 ~ 2,
+      reward_val == 10 ~ 3,
+      TRUE ~ NA_integer_
+    ),
+    
+    # Transformar effort
+    effort = case_when(
+      esfuerzo_val == 50 ~ 1,
+      esfuerzo_val == 65 ~ 2,
+      esfuerzo_val == 80 ~ 3,
+      esfuerzo_val == 95 ~ 4,
+      TRUE ~ NA_integer_
+    ),
+    
+    # Agent
+    agent = ifelse(trials <= 24, 0, 1),
+    
+    # Success
+    success = case_when(
+      is.na(fallo_val) ~ 0,
+      fallo_val == 1 ~ 1,
+      TRUE ~ 0
+    ),
+    
+    # Grupo
+    grupo_num = case_when(
+      grupo == "Control" ~ 0,
+      grupo == "Vulnerable" ~ 1,
+      TRUE ~ NA_integer_
+    )
+  ) %>%
+  
+  # Seleccionar columnas finales
+  select(sub, decision, reward, effort, agent, success, grupo = grupo_num) %>%
+  
+  # Ordenar
+  arrange(sub)
+
+
+
+
+write.csv(datos_long, "datos_long.csv")
 
 
 
