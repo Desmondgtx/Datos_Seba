@@ -441,7 +441,6 @@ for(i in 1:48) {
 }
 
 
-
 # Renombrar todas las columnas de fail_feedback_timing_Page.Submit
 for(i in 1:49) {
   # Nombre original
@@ -548,26 +547,11 @@ write.csv(datos_clean, "datos_final.csv")
 
 
 
-
-
 # ===========================
-## Steps for the long format
+# Part 4
+# Long Format
 
-# Change of work (0, 1 & 2) to  (0 - rest, 1 - work & NA - Omitions)
-
-# Change values of effort (50, 65, 80 & 95) to levels (1, 2, 3 & 4)
-
-# Change values of reward (2, 6 & 10) to levels (1, 2 & 3)
-
-# Change values of condition (Self & Other) to levels (0 & 1) respectively
-
-# Change values of group (Control & Experimental) to levels (0 & 1) respectively
-
-# Long format (repeat each value of the last columns 48 times for each participant)
-
-
-
-
+# Load Data Set
 datos = read_csv("datos_clean.csv")
 
 # Convertir de formato wide a long
@@ -693,165 +677,63 @@ datos_long <- datos %>%
   arrange(sub)
 
 
-
-
+# Save Data long
 write.csv(datos_long, "datos_long.csv")
 
 
-
 # ===========================
-# Datos ANOVA Reward (Optional)
+# Part 5
+# ANOVA Data
 
-# Paso 1: Identificar las columnas relevantes
-primeras_columnas <- 1:3
-ultimas_columnas <- (ncol(datos_clean)-9):ncol(datos_clean)
+# Leer datos
+datos_long <- read.csv("datos_long.csv")
 
-# Extraer nombres de columnas intermedias
-columnas_intermedias <- datos_clean[, -(c(primeras_columnas, ultimas_columnas))]
-nombres_columnas_intermedias <- colnames(columnas_intermedias)
-
-# Extraer los sufijos (número de trial) para agrupar columnas por trial
-sufijos <- str_extract(nombres_columnas_intermedias, "\\d+$") %>% unique()
-
-# Inicializar lista para almacenar valores por combinación
-resultados <- data.frame(
-  datos_clean[, primeras_columnas],
-  datos_clean[, ultimas_columnas]
-)
-
-# Inicializar columnas
-for (cond in c("SELF", "OTHER")) {
-  for (reward in c("2", "6", "10")) {
-    resultados[[paste0(cond, "_0", reward)]] <- NA
-  }
-}
-
-# Paso 2: Calcular promedios por participante para cada combinación
-for (i in 1:nrow(datos_clean)) {
-  valores <- list(
-    SELF_02 = c(), SELF_06 = c(), SELF_10 = c(),
-    OTHER_02 = c(), OTHER_06 = c(), OTHER_10 = c()
-  )
-  
-  for (suf in sufijos) {
-    cond_col_self <- paste0("condicion_SELF_", suf)
-    cond_col_other <- paste0("condicion_OTHER_", suf)
+# Calcular proporciones agregadas por participante
+model_free_proportions <- datos_long %>%
+  group_by(sub, grupo) %>%
+  summarise(
+    # Proporción de ayuda (decision == 1) para Self y Other
+    HelpSelf = mean(decision[agent == 0] == 1, na.rm = TRUE),
+    HelpOther = mean(decision[agent == 1] == 1, na.rm = TRUE),
     
-    reward_cols <- c(paste0("reward_2_", suf), paste0("reward_6_", suf), paste0("reward_10_", suf))
-    reward_col <- reward_cols[reward_cols %in% colnames(datos_clean)]
-    reward_val <- if (length(reward_col) > 0) str_extract(reward_col, "\\d+") else NA
+    # Proporciones por recompensa para Self (agent == 0) - Solo 3 niveles
+    SelfRew1 = mean(decision[agent == 0 & reward == 1] == 1, na.rm = TRUE),
+    SelfRew2 = mean(decision[agent == 0 & reward == 2] == 1, na.rm = TRUE),
+    SelfRew3 = mean(decision[agent == 0 & reward == 3] == 1, na.rm = TRUE),
     
-    if (!is.na(reward_val)) {
-      if (cond_col_self %in% colnames(datos_clean)) {
-        val <- datos_clean[[cond_col_self]][i]
-        if (!is.na(val)) {
-          valores[[paste0("SELF_0", reward_val)]] <- c(valores[[paste0("SELF_0", reward_val)]], val)
-        }
-      } else if (cond_col_other %in% colnames(datos_clean)) {
-        val <- datos_clean[[cond_col_other]][i]
-        if (!is.na(val)) {
-          valores[[paste0("OTHER_0", reward_val)]] <- c(valores[[paste0("OTHER_0", reward_val)]], val)
-        }
-      }
-    }
-  }
-  
-  # Asignar promedios redondeados
-  for (nombre in names(valores)) {
-    if (length(valores[[nombre]]) > 0) {
-      resultados[[nombre]][i] <- round(mean(valores[[nombre]]), 2)
-    }
-  }
-}
-
-# Guardar en nueva variable
-datos_anova_reward <- resultados
-
-# Save Dataset
-write.csv(datos_anova_reward, "datos_anova_reward.csv")
-
-
-
-# ===========================
-# Datos ANOVA Effort (Optional)
-
-
-# Paso 1: Identificar columnas que se conservarán
-primeras_columnas <- 1:3
-ultimas_columnas <- (ncol(datos_clean)-9):ncol(datos_clean)
-
-
-# Extraer las columnas intermedias
-columnas_intermedias <- datos_clean[, -(c(primeras_columnas, ultimas_columnas))]
-nombres_columnas_intermedias <- colnames(columnas_intermedias)
-
-
-# Extraer sufijos de trial
-sufijos <- str_extract(nombres_columnas_intermedias, "\\d+$") %>% unique()
-
-# Crear estructura del nuevo dataset
-resultados <- data.frame(
-  datos_clean[, primeras_columnas],
-  datos_clean[, ultimas_columnas]
-)
-
-# Crear columnas para esfuerzo
-esfuerzos <- c("50", "65", "80", "95")
-condiciones <- c("SELF", "OTHER")
-
-for (cond in condiciones) {
-  for (eff in esfuerzos) {
-    resultados[[paste0(cond, "_", eff)]] <- NA
-  }
-}
-
-# Paso 2: Recorrer fila por fila y calcular promedios según esfuerzo
-for (i in 1:nrow(datos_clean)) {
-  valores <- list(
-    SELF_50 = c(), SELF_65 = c(), SELF_80 = c(), SELF_95 = c(),
-    OTHER_50 = c(), OTHER_65 = c(), OTHER_80 = c(), OTHER_95 = c()
-  )
-  
-  for (suf in sufijos) {
-    # Obtener columnas disponibles
-    effort_cols <- paste0("esfuerzo_", esfuerzos, "_", suf)
-    effort_col <- effort_cols[effort_cols %in% colnames(datos_clean)]
+    # Proporciones por recompensa para Other (agent == 1) - Solo 3 niveles
+    OtherRew1 = mean(decision[agent == 1 & reward == 1] == 1, na.rm = TRUE),
+    OtherRew2 = mean(decision[agent == 1 & reward == 2] == 1, na.rm = TRUE),
+    OtherRew3 = mean(decision[agent == 1 & reward == 3] == 1, na.rm = TRUE),
     
-    # Extraer valor de esfuerzo de la columna presente
-    effort_val <- if (length(effort_col) > 0) str_extract(effort_col, "\\d+") else NA
+    # Proporciones por esfuerzo para Self (agent == 0) - Solo 4 niveles
+    SelfEff1 = mean(decision[agent == 0 & effort == 1] == 1, na.rm = TRUE),
+    SelfEff2 = mean(decision[agent == 0 & effort == 2] == 1, na.rm = TRUE),
+    SelfEff3 = mean(decision[agent == 0 & effort == 3] == 1, na.rm = TRUE),
+    SelfEff4 = mean(decision[agent == 0 & effort == 4] == 1, na.rm = TRUE),
     
-    # Extraer valor de condición
-    if (!is.na(effort_val)) {
-      cond_col_self <- paste0("condicion_SELF_", suf)
-      cond_col_other <- paste0("condicion_OTHER_", suf)
-      
-      if (cond_col_self %in% colnames(datos_clean)) {
-        val <- datos_clean[[cond_col_self]][i]
-        if (!is.na(val)) {
-          valores[[paste0("SELF_", effort_val)]] <- c(valores[[paste0("SELF_", effort_val)]], val)
-        }
-      } else if (cond_col_other %in% colnames(datos_clean)) {
-        val <- datos_clean[[cond_col_other]][i]
-        if (!is.na(val)) {
-          valores[[paste0("OTHER_", effort_val)]] <- c(valores[[paste0("OTHER_", effort_val)]], val)
-        }
-      }
-    }
-  }
-  
-  # Guardar promedios en el nuevo dataset
-  for (nombre in names(valores)) {
-    if (length(valores[[nombre]]) > 0) {
-      resultados[[nombre]][i] <- round(mean(valores[[nombre]]), 2)
-    }
-  }
-}
+    # Proporciones por esfuerzo para Other (agent == 1) - Solo 4 niveles
+    OtherEff1 = mean(decision[agent == 1 & effort == 1] == 1, na.rm = TRUE),
+    OtherEff2 = mean(decision[agent == 1 & effort == 2] == 1, na.rm = TRUE),
+    OtherEff3 = mean(decision[agent == 1 & effort == 3] == 1, na.rm = TRUE),
+    OtherEff4 = mean(decision[agent == 1 & effort == 4] == 1, na.rm = TRUE),
+    
+    # Proporción total de trabajo (excluye omisiones, decision == 2)
+    WorkSelf = mean(decision[agent == 0 & decision != 2] == 1, na.rm = TRUE),
+    WorkOther = mean(decision[agent == 1 & decision != 2] == 1, na.rm = TRUE),
+    
+    .groups = 'drop'
+  ) %>%
+  # Mantener columna grupo si la necesitas, o removerla
+  select(-grupo)  # Remueve esta línea si quieres mantener la columna grupo
 
-# Guardar en nuevo dataset
-datos_anova_effort <- resultados
+# Redondear todas las columnas numéricas a 4 decimales
+model_free_proportions <- model_free_proportions %>%
+  mutate(across(where(is.numeric) & !sub, ~round(., 4)))
 
-# Save Dataset
-write.csv(datos_anova_effort, "datos_anova_effort.csv")
+# Guardar el resultado
+write.csv(model_free_proportions, "datos_analisis.csv")
+
 
 
 
