@@ -441,14 +441,14 @@ for(i in 1:48) {
 }
 
 
-# Renombrar todas las columnas de fail_feedback_timing_Page.Submit
+# Rename every fail_feedback_timing_Page.Submit column
 for(i in 1:49) {
-  # Nombre original
+  # Original Name
   old_name <- paste0("X", i, "_fail_feedback_timing_Page.Submit")
-  # Nombre nuevo con formato de dos dígitos
+  # New name
   new_name <- sprintf("fallo_%02d", i)
   
-  # Renombrar si la columna existe
+  # Rename
   if(old_name %in% names(datos)) {
     names(datos)[names(datos) == old_name] <- new_name
   }
@@ -484,6 +484,9 @@ datos_clean = datos_clean %>%
     trabajo_other = sum(c_across(all_of(other_cols)) == 1, na.rm = TRUE) /
       length(other_cols) * 100,
     
+    ## Total Work (SELF & OTHER)
+    trabajo_total = (trabajo_self + trabajo_other) / 2,
+    
     ## Omition (valor 0) 
     zeros_SELF    = sum(c_across(all_of(self_cols))  == 0, na.rm = TRUE) /
       length(self_cols)  * 100,
@@ -493,17 +496,17 @@ datos_clean = datos_clean %>%
     ## Total Omitions (SELF & OTHER)
     zeros_TOTAL = (zeros_SELF + zeros_OTHER) / 2
   ) %>% 
-  ungroup()
-
-# Round numbers to the 2nd decimal
-datos_clean <- datos_clean %>%
+  ungroup() %>%
+  # Round to 2 decimals
   mutate(
     trabajo_self = round(trabajo_self, 2),
     trabajo_other = round(trabajo_other, 2),
+    trabajo_total = round(trabajo_total, 2),
     zeros_SELF = round(zeros_SELF, 2),
     zeros_OTHER = round(zeros_OTHER, 2),
     zeros_TOTAL = round(zeros_TOTAL, 2)
-  )
+)
+
 
 # Calculate adjusted proportions (excluding zeros from denominator)
 datos_clean = datos_clean %>% 
@@ -518,31 +521,27 @@ datos_clean = datos_clean %>%
       (length(self_cols) - zeros_count_self) * 100,
     
     trabajo_other_ajustado = sum(c_across(all_of(other_cols)) == 1, na.rm = TRUE) / 
-      (length(other_cols) - zeros_count_other) * 100
+      (length(other_cols) - zeros_count_other) * 100,
+    
+    trabajo_total_ajustado = (trabajo_self_ajustado + trabajo_other_ajustado) / 2,
+    
   ) %>% 
   ungroup() %>%
   # Round to 2 decimals
   mutate(
     trabajo_self_ajustado = round(trabajo_self_ajustado, 2),
-    trabajo_other_ajustado = round(trabajo_other_ajustado, 2)
+    trabajo_other_ajustado = round(trabajo_other_ajustado, 2),
+    trabajo_total_ajustado = round(trabajo_total_ajustado, 2)
   ) %>%
   # Remove auxiliary columns
   select(-zeros_count_self, -zeros_count_other)
 
-# Extract columns of interest
-self_cols <- select(datos_clean, starts_with("condicion_SELF"))
-other_cols <- select(datos_clean, starts_with("condicion_OTHER"))
-
-# Count omitions (0)
-datos_clean <- datos_clean %>%
-  mutate(
-    count_omitidas_SELF = rowSums(self_cols == 0, na.rm = TRUE),
-    count_omitidas_OTHER = rowSums(other_cols == 0, na.rm = TRUE),
-    count_omitidas_TOTAL = count_omitidas_SELF + count_omitidas_OTHER
-  )
 
 
-# Guardar set de datos 
+# Fail Proportion
+
+
+# Save dataset
 write.csv(datos_clean, "datos_final.csv")
 
 
