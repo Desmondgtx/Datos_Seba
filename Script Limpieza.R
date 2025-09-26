@@ -221,7 +221,6 @@ ids_faltantes(effort_task, participantes_ID)
 write.csv(effort_task, "datos_limpios.csv")
 
 
-
 # ===========================
 # Part 2
 
@@ -251,7 +250,6 @@ datos = datos %>% select(ID_check, grupo,
 # Attention check (stimulus N°49)
 respuestas_4 = sum(datos$X49_attention_check == 4, na.rm = TRUE) # Respondieron 60 participantes
 respuestas_na = sum(is.na(datos$X49_attention_check)) # NO respondieron 41 participantes
-
 
 
 # Divide condition columns with reward, effort and difficulty 
@@ -603,11 +601,8 @@ for(i in 1:48) {
 }
 
 
-
-
 # Save Dataset
 write.csv(datos, "datos_clean.csv")
-
 
 
 # ===========================
@@ -909,9 +904,11 @@ write.csv(datos_long, "datos_long.csv")
 # Part 5
 # ANOVA Data
 
+
 # Leer datos
 datos_long <- read.csv("datos_long.csv")
 datos_clean <- read.csv("datos_final.csv")
+
 
 # Verificar qué participante(s) podrían tener solo omisiones
 participantes_con_datos <- datos_long %>%
