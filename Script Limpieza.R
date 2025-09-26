@@ -253,6 +253,7 @@ respuestas_4 = sum(datos$X49_attention_check == 4, na.rm = TRUE) # Respondieron 
 respuestas_na = sum(is.na(datos$X49_attention_check)) # NO respondieron 41 participantes
 
 
+
 # Divide condition columns with reward, effort and difficulty 
 {
   # Identify the 48 columns of stimulus (SELF.* / OTHER.*) ──
@@ -293,117 +294,7 @@ respuestas_na = sum(is.na(datos$X49_attention_check)) # NO respondieron 41 parti
   
   # Unify everything
   datos = bind_cols(datos_base, as_tibble(new_cols))
-}
-
-
-# Reorder columns on specific order
-datos = datos %>%
-  select(
-    # First columns
-    ID_check, grupo, Comp2_Q1, Comp2_Q2, X49_attention_check,
-    
-    # Alternate between stimulus columns and fail_feedback columns
-    # Trial 01
-    contains("_01"), X1_fail_feedback_timing_Page.Submit,
-    # Trial 02  
-    contains("_02"), X2_fail_feedback_timing_Page.Submit,
-    # Trial 03
-    contains("_03"), X3_fail_feedback_timing_Page.Submit,
-    # Trial 04
-    contains("_04"), X4_fail_feedback_timing_Page.Submit,
-    # Trial 05
-    contains("_05"), X5_fail_feedback_timing_Page.Submit,
-    # Trial 06
-    contains("_06"), X6_fail_feedback_timing_Page.Submit,
-    # Trial 07
-    contains("_07"), X7_fail_feedback_timing_Page.Submit,
-    # Trial 08
-    contains("_08"), X8_fail_feedback_timing_Page.Submit,
-    # Trial 09
-    contains("_09"), X9_fail_feedback_timing_Page.Submit,
-    # Trial 10
-    contains("_10"), X10_fail_feedback_timing_Page.Submit,
-    # Trial 11
-    contains("_11"), X11_fail_feedback_timing_Page.Submit,
-    # Trial 12
-    contains("_12"), X12_fail_feedback_timing_Page.Submit,
-    # Trial 13
-    contains("_13"), X13_fail_feedback_timing_Page.Submit,
-    # Trial 14
-    contains("_14"), X14_fail_feedback_timing_Page.Submit,
-    # Trial 15
-    contains("_15"), X15_fail_feedback_timing_Page.Submit,
-    # Trial 16
-    contains("_16"), X16_fail_feedback_timing_Page.Submit,
-    # Trial 17
-    contains("_17"), X17_fail_feedback_timing_Page.Submit,
-    # Trial 18
-    contains("_18"), X18_fail_feedback_timing_Page.Submit,
-    # Trial 19
-    contains("_19"), X19_fail_feedback_timing_Page.Submit,
-    # Trial 20
-    contains("_20"), X20_fail_feedback_timing_Page.Submit,
-    # Trial 21
-    contains("_21"), X21_fail_feedback_timing_Page.Submit,
-    # Trial 22
-    contains("_22"), X22_fail_feedback_timing_Page.Submit,
-    # Trial 23
-    contains("_23"), X23_fail_feedback_timing_Page.Submit,
-    # Trial 24
-    contains("_24"), X24_fail_feedback_timing_Page.Submit,
-    # Trial 25
-    contains("_25"), X25_fail_feedback_timing_Page.Submit,
-    # Trial 26
-    contains("_26"), X26_fail_feedback_timing_Page.Submit,
-    # Trial 27
-    contains("_27"), X27_fail_feedback_timing_Page.Submit,
-    # Trial 28
-    contains("_28"), X28_fail_feedback_timing_Page.Submit,
-    # Trial 29
-    contains("_29"), X29_fail_feedback_timing_Page.Submit,
-    # Trial 30
-    contains("_30"), X30_fail_feedback_timing_Page.Submit,
-    # Trial 31
-    contains("_31"), X31_fail_feedback_timing_Page.Submit,
-    # Trial 32
-    contains("_32"), X32_fail_feedback_timing_Page.Submit,
-    # Trial 33
-    contains("_33"), X33_fail_feedback_timing_Page.Submit,
-    # Trial 34
-    contains("_34"), X34_fail_feedback_timing_Page.Submit,
-    # Trial 35
-    contains("_35"), X35_fail_feedback_timing_Page.Submit,
-    # Trial 36
-    contains("_36"), X36_fail_feedback_timing_Page.Submit,
-    # Trial 37
-    contains("_37"), X37_fail_feedback_timing_Page.Submit,
-    # Trial 38
-    contains("_38"), X38_fail_feedback_timing_Page.Submit,
-    # Trial 39
-    contains("_39"), X39_fail_feedback_timing_Page.Submit,
-    # Trial 40
-    contains("_40"), X40_fail_feedback_timing_Page.Submit,
-    # Trial 41
-    contains("_41"), X41_fail_feedback_timing_Page.Submit,
-    # Trial 42
-    contains("_42"), X42_fail_feedback_timing_Page.Submit,
-    # Trial 43
-    contains("_43"), X43_fail_feedback_timing_Page.Submit,
-    # Trial 44
-    contains("_44"), X44_fail_feedback_timing_Page.Submit,
-    # Trial 45
-    contains("_45"), X45_fail_feedback_timing_Page.Submit,
-    # Trial 46
-    contains("_46"), X46_fail_feedback_timing_Page.Submit,
-    # Trial 47
-    contains("_47"), X47_fail_feedback_timing_Page.Submit,
-    # Trial 48
-    contains("_48"), X48_fail_feedback_timing_Page.Submit,
-    # Delete later
-    X49_fail_feedback_timing_Page.Submit
-  )
-
-
+} # 246 columns
 
 
 # Create new columns with Comp Q1 & Q2 results
@@ -415,31 +306,6 @@ datos = datos %>%
   )) %>%
   # Put this new columns just after Comp_Q2
   relocate(resultados_Comp, .after = Comp2_Q2)
-
-
-
-# Delete last column
-datos = datos[, -247]
-
-
-# Apply transformation to every "fail_feedback column" 
-for(i in 1:48) {
-  # Formatting trial number
-  trial_num = sprintf("%02d", i)
-  
-  # Identify columns names
-  col_condicion = grep(paste0("condicion.*_", trial_num, "$"), names(datos), value = TRUE)
-  col_feedback = paste0("X", i, "_fail_feedback_timing_Page.Submit")
-  
-  # Apply transformation
-  datos = datos %>%
-    mutate(!!col_feedback := case_when(
-      .data[[col_condicion]] == 0 ~ NA_real_,  # If condition = 0, convert to NA
-      .data[[col_condicion]] == 1 & !is.na(.data[[col_feedback]]) ~ 1,  # If condition = 1 and some value on fail_feedback, convert to 1
-      TRUE ~ .data[[col_feedback]]  # If is NA, mantaining as NA
-    ))
-}
-
 
 # Rename every fail_feedback_timing_Page.Submit column
 for(i in 1:49) {
@@ -455,7 +321,291 @@ for(i in 1:49) {
 }
 
 
+# Reorder columns on specific order
+datos = datos %>%
+  select(
+    # First columns
+    ID_check, grupo, Comp2_Q1, Comp2_Q2, resultados_Comp, X49_attention_check,
+    
+    # Alternate between stimulus columns and fail_feedback columns
+    # Para cada trial, seleccionar específicamente las 4 columnas correspondientes
+    
+    # Trial 01
+    matches("^condicion_.*_01$"), matches("^reward_.*_01$"), 
+    matches("^dificultad_.*_01$"), matches("^esfuerzo_.*_01$"), 
+    fallo_01,
+    
+    # Trial 02
+    matches("^condicion_.*_02$"), matches("^reward_.*_02$"), 
+    matches("^dificultad_.*_02$"), matches("^esfuerzo_.*_02$"), 
+    fallo_02,
+    
+    # Trial 03
+    matches("^condicion_.*_03$"), matches("^reward_.*_03$"), 
+    matches("^dificultad_.*_03$"), matches("^esfuerzo_.*_03$"), 
+    fallo_03,
+    
+    # Trial 04
+    matches("^condicion_.*_04$"), matches("^reward_.*_04$"), 
+    matches("^dificultad_.*_04$"), matches("^esfuerzo_.*_04$"), 
+    fallo_04,
+    
+    # Trial 05
+    matches("^condicion_.*_05$"), matches("^reward_.*_05$"), 
+    matches("^dificultad_.*_05$"), matches("^esfuerzo_.*_05$"), 
+    fallo_05,
+    
+    # Trial 06
+    matches("^condicion_.*_06$"), matches("^reward_.*_06$"), 
+    matches("^dificultad_.*_06$"), matches("^esfuerzo_.*_06$"), 
+    fallo_06,
+    
+    # Trial 07
+    matches("^condicion_.*_07$"), matches("^reward_.*_07$"), 
+    matches("^dificultad_.*_07$"), matches("^esfuerzo_.*_07$"), 
+    fallo_07,
+    
+    # Trial 08
+    matches("^condicion_.*_08$"), matches("^reward_.*_08$"), 
+    matches("^dificultad_.*_08$"), matches("^esfuerzo_.*_08$"), 
+    fallo_08,
+    
+    # Trial 09
+    matches("^condicion_.*_09$"), matches("^reward_.*_09$"), 
+    matches("^dificultad_.*_09$"), matches("^esfuerzo_.*_09$"), 
+    fallo_09,
+    
+    # Trial 10
+    matches("^condicion_.*_10$"), matches("^reward_.*_10$"), 
+    matches("^dificultad_.*_10$"), matches("^esfuerzo_.*_10$"), 
+    fallo_10,
+    
+    # Trial 11
+    matches("^condicion_.*_11$"), matches("^reward_.*_11$"), 
+    matches("^dificultad_.*_11$"), matches("^esfuerzo_.*_11$"), 
+    fallo_11,
+    
+    # Trial 12
+    matches("^condicion_.*_12$"), matches("^reward_.*_12$"), 
+    matches("^dificultad_.*_12$"), matches("^esfuerzo_.*_12$"), 
+    fallo_12,
+    
+    # Trial 13
+    matches("^condicion_.*_13$"), matches("^reward_.*_13$"), 
+    matches("^dificultad_.*_13$"), matches("^esfuerzo_.*_13$"), 
+    fallo_13,
+    
+    # Trial 14
+    matches("^condicion_.*_14$"), matches("^reward_.*_14$"), 
+    matches("^dificultad_.*_14$"), matches("^esfuerzo_.*_14$"), 
+    fallo_14,
+    
+    # Trial 15
+    matches("^condicion_.*_15$"), matches("^reward_.*_15$"), 
+    matches("^dificultad_.*_15$"), matches("^esfuerzo_.*_15$"), 
+    fallo_15,
+    
+    # Trial 16
+    matches("^condicion_.*_16$"), matches("^reward_.*_16$"), 
+    matches("^dificultad_.*_16$"), matches("^esfuerzo_.*_16$"), 
+    fallo_16,
+    
+    # Trial 17
+    matches("^condicion_.*_17$"), matches("^reward_.*_17$"), 
+    matches("^dificultad_.*_17$"), matches("^esfuerzo_.*_17$"), 
+    fallo_17,
+    
+    # Trial 18
+    matches("^condicion_.*_18$"), matches("^reward_.*_18$"), 
+    matches("^dificultad_.*_18$"), matches("^esfuerzo_.*_18$"), 
+    fallo_18,
+    
+    # Trial 19
+    matches("^condicion_.*_19$"), matches("^reward_.*_19$"), 
+    matches("^dificultad_.*_19$"), matches("^esfuerzo_.*_19$"), 
+    fallo_19,
+    
+    # Trial 20
+    matches("^condicion_.*_20$"), matches("^reward_.*_20$"), 
+    matches("^dificultad_.*_20$"), matches("^esfuerzo_.*_20$"), 
+    fallo_20,
+    
+    # Trial 21
+    matches("^condicion_.*_21$"), matches("^reward_.*_21$"), 
+    matches("^dificultad_.*_21$"), matches("^esfuerzo_.*_21$"), 
+    fallo_21,
+    
+    # Trial 22
+    matches("^condicion_.*_22$"), matches("^reward_.*_22$"), 
+    matches("^dificultad_.*_22$"), matches("^esfuerzo_.*_22$"), 
+    fallo_22,
+    
+    # Trial 23
+    matches("^condicion_.*_23$"), matches("^reward_.*_23$"), 
+    matches("^dificultad_.*_23$"), matches("^esfuerzo_.*_23$"), 
+    fallo_23,
+    
+    # Trial 24
+    matches("^condicion_.*_24$"), matches("^reward_.*_24$"), 
+    matches("^dificultad_.*_24$"), matches("^esfuerzo_.*_24$"), 
+    fallo_24,
+    
+    # Trial 25
+    matches("^condicion_.*_25$"), matches("^reward_.*_25$"), 
+    matches("^dificultad_.*_25$"), matches("^esfuerzo_.*_25$"), 
+    fallo_25,
+    
+    # Trial 26
+    matches("^condicion_.*_26$"), matches("^reward_.*_26$"), 
+    matches("^dificultad_.*_26$"), matches("^esfuerzo_.*_26$"), 
+    fallo_26,
+    
+    # Trial 27
+    matches("^condicion_.*_27$"), matches("^reward_.*_27$"), 
+    matches("^dificultad_.*_27$"), matches("^esfuerzo_.*_27$"), 
+    fallo_27,
+    
+    # Trial 28
+    matches("^condicion_.*_28$"), matches("^reward_.*_28$"), 
+    matches("^dificultad_.*_28$"), matches("^esfuerzo_.*_28$"), 
+    fallo_28,
+    
+    # Trial 29
+    matches("^condicion_.*_29$"), matches("^reward_.*_29$"), 
+    matches("^dificultad_.*_29$"), matches("^esfuerzo_.*_29$"), 
+    fallo_29,
+    
+    # Trial 30
+    matches("^condicion_.*_30$"), matches("^reward_.*_30$"), 
+    matches("^dificultad_.*_30$"), matches("^esfuerzo_.*_30$"), 
+    fallo_30,
+    
+    # Trial 31
+    matches("^condicion_.*_31$"), matches("^reward_.*_31$"), 
+    matches("^dificultad_.*_31$"), matches("^esfuerzo_.*_31$"), 
+    fallo_31,
+    
+    # Trial 32
+    matches("^condicion_.*_32$"), matches("^reward_.*_32$"), 
+    matches("^dificultad_.*_32$"), matches("^esfuerzo_.*_32$"), 
+    fallo_32,
+    
+    # Trial 33
+    matches("^condicion_.*_33$"), matches("^reward_.*_33$"), 
+    matches("^dificultad_.*_33$"), matches("^esfuerzo_.*_33$"), 
+    fallo_33,
+    
+    # Trial 34
+    matches("^condicion_.*_34$"), matches("^reward_.*_34$"), 
+    matches("^dificultad_.*_34$"), matches("^esfuerzo_.*_34$"), 
+    fallo_34,
+    
+    # Trial 35
+    matches("^condicion_.*_35$"), matches("^reward_.*_35$"), 
+    matches("^dificultad_.*_35$"), matches("^esfuerzo_.*_35$"), 
+    fallo_35,
+    
+    # Trial 36
+    matches("^condicion_.*_36$"), matches("^reward_.*_36$"), 
+    matches("^dificultad_.*_36$"), matches("^esfuerzo_.*_36$"), 
+    fallo_36,
+    
+    # Trial 37
+    matches("^condicion_.*_37$"), matches("^reward_.*_37$"), 
+    matches("^dificultad_.*_37$"), matches("^esfuerzo_.*_37$"), 
+    fallo_37,
+    
+    # Trial 38
+    matches("^condicion_.*_38$"), matches("^reward_.*_38$"), 
+    matches("^dificultad_.*_38$"), matches("^esfuerzo_.*_38$"), 
+    fallo_38,
+    
+    # Trial 39
+    matches("^condicion_.*_39$"), matches("^reward_.*_39$"), 
+    matches("^dificultad_.*_39$"), matches("^esfuerzo_.*_39$"), 
+    fallo_39,
+    
+    # Trial 40
+    matches("^condicion_.*_40$"), matches("^reward_.*_40$"), 
+    matches("^dificultad_.*_40$"), matches("^esfuerzo_.*_40$"), 
+    fallo_40,
+    
+    # Trial 41
+    matches("^condicion_.*_41$"), matches("^reward_.*_41$"), 
+    matches("^dificultad_.*_41$"), matches("^esfuerzo_.*_41$"), 
+    fallo_41,
+    
+    # Trial 42
+    matches("^condicion_.*_42$"), matches("^reward_.*_42$"), 
+    matches("^dificultad_.*_42$"), matches("^esfuerzo_.*_42$"), 
+    fallo_42,
+    
+    # Trial 43
+    matches("^condicion_.*_43$"), matches("^reward_.*_43$"), 
+    matches("^dificultad_.*_43$"), matches("^esfuerzo_.*_43$"), 
+    fallo_43,
+    
+    # Trial 44
+    matches("^condicion_.*_44$"), matches("^reward_.*_44$"), 
+    matches("^dificultad_.*_44$"), matches("^esfuerzo_.*_44$"), 
+    fallo_44,
+    
+    # Trial 45
+    matches("^condicion_.*_45$"), matches("^reward_.*_45$"), 
+    matches("^dificultad_.*_45$"), matches("^esfuerzo_.*_45$"), 
+    fallo_45,
+    
+    # Trial 46
+    matches("^condicion_.*_46$"), matches("^reward_.*_46$"), 
+    matches("^dificultad_.*_46$"), matches("^esfuerzo_.*_46$"), 
+    fallo_46,
+    
+    # Trial 47
+    matches("^condicion_.*_47$"), matches("^reward_.*_47$"), 
+    matches("^dificultad_.*_47$"), matches("^esfuerzo_.*_47$"), 
+    fallo_47,
+    
+    # Trial 48
+    matches("^condicion_.*_48$"), matches("^reward_.*_48$"), 
+    matches("^dificultad_.*_48$"), matches("^esfuerzo_.*_48$"), 
+    fallo_48
+  )
 
+
+# Apply transformation to every "fallo" column 
+for(i in 1:48) {
+  # Formatting trial number
+  trial_num = sprintf("%02d", i)
+  
+  # Identify columns names
+  col_condicion = grep(paste0("condicion.*_", trial_num, "$"), names(datos), value = TRUE)
+  col_fallo = paste0("fallo_", trial_num)
+  
+  # Verificar que ambas columnas existen
+  if(length(col_condicion) > 0 && col_fallo %in% names(datos)) {
+    
+    # Apply transformation
+    datos = datos %>%
+      mutate(!!col_fallo := case_when(
+        # Si condicion = 1 y existe cualquier valor (no NA) en fallo -> poner 1
+        .data[[col_condicion]] == 1 & !is.na(.data[[col_fallo]]) ~ 1,
+        
+        # Si condicion es 0 o 2, y existe valor en fallo -> poner NA
+        (.data[[col_condicion]] == 0 | .data[[col_condicion]] == 2) & !is.na(.data[[col_fallo]]) ~ NA_real_,
+        
+        # Si fallo ya es NA, mantenerlo como NA (independiente del valor de condicion)
+        is.na(.data[[col_fallo]]) ~ NA_real_,
+        
+        # Cualquier otro caso (por seguridad)
+        TRUE ~ .data[[col_fallo]]
+      ))
+  }
+}
+
+
+
+
+# Save Dataset
 write.csv(datos, "datos_clean.csv")
 
 
@@ -536,14 +686,90 @@ datos_clean = datos_clean %>%
   # Remove auxiliary columns
   select(-zeros_count_self, -zeros_count_other)
 
-
-
 # Fail Proportion
+# Identificar las columnas de condición y fallo
+fallo_cols = grep("^fallo_", names(datos_clean), value = TRUE)[1:48]  # Solo los primeros 48 (excluir fallo_49 si existe)
+
+# Calcular tasa de fallo
+datos_clean = datos_clean %>% 
+  rowwise() %>% 
+  mutate(
+    # === TASA DE FALLO SELF ===
+    # Contar cuántas veces trabajó en SELF (valor = 1)
+    trabajo_self_count = sum(c_across(all_of(self_cols)) == 1, na.rm = TRUE),
+    
+    # Contar fallos cuando trabajó en SELF
+    # (fallo = 1 cuando la condición correspondiente SELF = 1)
+    fallos_self_count = sum(
+      mapply(function(cond_col, fallo_col) {
+        cond_val = get(cond_col)
+        fallo_val = get(fallo_col)
+        # Contar fallo solo si trabajó (condición = 1) y falló (fallo = 1)
+        return(cond_val == 1 & !is.na(fallo_val) & fallo_val == 1)
+      }, 
+      self_cols, 
+      fallo_cols[1:24])  # Los primeros 24 corresponden a SELF
+    ),
+    
+    # Calcular tasa de fallo SELF
+    tasa_fallo_self = ifelse(
+      trabajo_self_count > 0,
+      (fallos_self_count / trabajo_self_count) * 100,
+      NA_real_
+    ),
+    
+    # === TASA DE FALLO OTHER ===
+    # Contar cuántas veces trabajó en OTHER (valor = 1)
+    trabajo_other_count = sum(c_across(all_of(other_cols)) == 1, na.rm = TRUE),
+    
+    # Contar fallos cuando trabajó en OTHER
+    fallos_other_count = sum(
+      mapply(function(cond_col, fallo_col) {
+        cond_val = get(cond_col)
+        fallo_val = get(fallo_col)
+        # Contar fallo solo si trabajó (condición = 1) y falló (fallo = 1)
+        return(cond_val == 1 & !is.na(fallo_val) & fallo_val == 1)
+      }, 
+      other_cols, 
+      fallo_cols[25:48])  # Los últimos 24 corresponden a OTHER
+    ),
+    
+    # Calcular tasa de fallo OTHER
+    tasa_fallo_other = ifelse(
+      trabajo_other_count > 0,
+      (fallos_other_count / trabajo_other_count) * 100,
+      NA_real_
+    ),
+    
+    # === TASA DE FALLO TOTAL ===
+    # Total de veces que trabajó (SELF + OTHER)
+    trabajo_total_count = trabajo_self_count + trabajo_other_count,
+    
+    # Total de fallos
+    fallos_total_count = fallos_self_count + fallos_other_count,
+    
+    # Calcular tasa de fallo TOTAL
+    tasa_fallo_total = ifelse(
+      trabajo_total_count > 0,
+      (fallos_total_count / trabajo_total_count) * 100,
+      NA_real_
+    )
+    
+  ) %>% 
+  ungroup() %>%
+  # Redondear a 2 decimales y limpiar columnas auxiliares
+  mutate(
+    tasa_fallo_self = round(tasa_fallo_self, 2),
+    tasa_fallo_other = round(tasa_fallo_other, 2),
+    tasa_fallo_total = round(tasa_fallo_total, 2)
+  ) %>%
+  # Opcional: remover las columnas de conteo si no las necesitas
+  select(-trabajo_self_count, -trabajo_other_count, -trabajo_total_count,
+         -fallos_self_count, -fallos_other_count, -fallos_total_count)
 
 
 # Save dataset
 write.csv(datos_clean, "datos_final.csv")
-
 
 
 # ===========================
@@ -675,7 +901,6 @@ datos_long <- datos %>%
   # Ordenar
   arrange(sub)
 
-
 # Save Data long
 write.csv(datos_long, "datos_long.csv")
 
@@ -686,12 +911,39 @@ write.csv(datos_long, "datos_long.csv")
 
 # Leer datos
 datos_long <- read.csv("datos_long.csv")
+datos_clean <- read.csv("datos_final.csv")
 
-# Calcular proporciones agregadas por participante
+# Verificar qué participante(s) podrían tener solo omisiones
+participantes_con_datos <- datos_long %>%
+  filter(decision != 2) %>%
+  pull(sub) %>%
+  unique()
+
+participantes_totales <- unique(datos_long$sub)
+participantes_faltantes <- setdiff(participantes_totales, participantes_con_datos)
+
+if(length(participantes_faltantes) > 0) {
+  cat("Participante(s) con solo omisiones:", participantes_faltantes, "\n")
+}
+# Participante(s) con solo omisiones: 2939 
+
+
+# Seleccionar las columnas que necesitamos de datos_clean
+columnas_adicionales <- datos_clean %>%
+  select(ID_check,
+         trabajo_self, trabajo_other, trabajo_total,
+         zeros_SELF, zeros_OTHER, zeros_TOTAL,
+         trabajo_self_ajustado, trabajo_other_ajustado, trabajo_total_ajustado,
+         tasa_fallo_self, tasa_fallo_other, tasa_fallo_total)
+
+# Calcular proporciones agregadas por participante (EXCLUYENDO OMISIONES)
 model_free_proportions <- datos_long %>%
+  # Filtrar para excluir omisiones (decision == 2)
+  filter(decision != 2) %>%
   group_by(sub, grupo) %>%
   summarise(
     # Proporción de ayuda (decision == 1) para Self y Other
+    # Ahora solo entre trabajo (1) y descanso (0)
     HelpSelf = mean(decision[agent == 0] == 1, na.rm = TRUE),
     HelpOther = mean(decision[agent == 1] == 1, na.rm = TRUE),
     
@@ -717,22 +969,30 @@ model_free_proportions <- datos_long %>%
     OtherEff3 = mean(decision[agent == 1 & effort == 3] == 1, na.rm = TRUE),
     OtherEff4 = mean(decision[agent == 1 & effort == 4] == 1, na.rm = TRUE),
     
-    # Proporción total de trabajo (excluye omisiones, decision == 2)
-    WorkSelf = mean(decision[agent == 0 & decision != 2] == 1, na.rm = TRUE),
-    WorkOther = mean(decision[agent == 1 & decision != 2] == 1, na.rm = TRUE),
+    # Proporción total de trabajo (ya excluye omisiones por el filter inicial)
+    WorkSelf = mean(decision[agent == 0] == 1, na.rm = TRUE),
+    WorkOther = mean(decision[agent == 1] == 1, na.rm = TRUE),
     
     .groups = 'drop'
-  ) %>%
-  # Mantener columna grupo si la necesitas, o removerla
-  select(-grupo)  # Remueve esta línea si quieres mantener la columna grupo
+  )
+
+# Unir con las columnas adicionales de datos_clean
+# Primero, asegurar que el formato de ID sea consistente
+columnas_adicionales$ID_check <- sprintf("%04d", as.integer(columnas_adicionales$ID_check))
+
+# Hacer el join
+model_free_proportions_v2 <- model_free_proportions %>%
+  left_join(columnas_adicionales, by = c("sub" = "ID_check"))
+
+# Remover columna grupo si no la necesitas
+model_free_proportions_v2 <- model_free_proportions_v2 %>%
+  select(-grupo)
 
 # Redondear todas las columnas numéricas a 4 decimales
-model_free_proportions <- model_free_proportions %>%
+model_free_proportions_v2 <- model_free_proportions_v2 %>%
   mutate(across(where(is.numeric) & !sub, ~round(., 4)))
 
 # Guardar el resultado
-write.csv(model_free_proportions, "datos_analisis.csv")
-
-
-
+write.csv(model_free_proportions, "datos_analisis.csv", row.names = FALSE)
+write.csv(model_free_proportions_v2, "datos_analisis_v2.csv", row.names = FALSE)
 
