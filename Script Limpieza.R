@@ -653,6 +653,7 @@ datos_clean = datos_clean %>%
 )
 
 
+
 # Calculate adjusted proportions (excluding zeros from denominator)
 datos_clean = datos_clean %>% 
   rowwise() %>% 
@@ -661,14 +662,33 @@ datos_clean = datos_clean %>%
     zeros_count_self = sum(c_across(all_of(self_cols)) == 0, na.rm = TRUE),
     zeros_count_other = sum(c_across(all_of(other_cols)) == 0, na.rm = TRUE),
     
-    # Calculate adjusted proportions (1s / (total - zeros))
-    trabajo_self_ajustado = sum(c_across(all_of(self_cols)) == 1, na.rm = TRUE) / 
-      (length(self_cols) - zeros_count_self) * 100,
+    # Count ones (numerators)
+    ones_count_self = sum(c_across(all_of(self_cols)) == 1, na.rm = TRUE),
+    ones_count_other = sum(c_across(all_of(other_cols)) == 1, na.rm = TRUE),
     
-    trabajo_other_ajustado = sum(c_across(all_of(other_cols)) == 1, na.rm = TRUE) / 
-      (length(other_cols) - zeros_count_other) * 100,
+    # Calculate denominators (trials without omissions)
+    denominator_self = length(self_cols) - zeros_count_self,
+    denominator_other = length(other_cols) - zeros_count_other,
     
-    trabajo_total_ajustado = (trabajo_self_ajustado + trabajo_other_ajustado) / 2,
+    # Calculate adjusted proportions for SELF and OTHER
+    trabajo_self_ajustado = ifelse(
+      denominator_self > 0,
+      (ones_count_self / denominator_self) * 100,
+      NA_real_
+    ),
+    
+    trabajo_other_ajustado = ifelse(
+      denominator_other > 0,
+      (ones_count_other / denominator_other) * 100,
+      NA_real_
+    ),
+    
+    # Calculate TOTAL adjusted proportion (ponderado)
+    trabajo_total_ajustado = ifelse(
+      (denominator_self + denominator_other) > 0,
+      ((ones_count_self + ones_count_other) / (denominator_self + denominator_other)) * 100,
+      NA_real_
+    )
     
   ) %>% 
   ungroup() %>%
@@ -679,7 +699,11 @@ datos_clean = datos_clean %>%
     trabajo_total_ajustado = round(trabajo_total_ajustado, 2)
   ) %>%
   # Remove auxiliary columns
-  select(-zeros_count_self, -zeros_count_other)
+  select(-zeros_count_self, -zeros_count_other, 
+         -ones_count_self, -ones_count_other,
+         -denominator_self, -denominator_other)
+
+
 
 # Fail Proportion
 # Identificar las columnas de condición y fallo
