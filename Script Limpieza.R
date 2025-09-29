@@ -1006,9 +1006,6 @@ model_free_proportions$sub <- sprintf("%04d", as.integer(model_free_proportions$
 model_free_proportions_v2 <- model_free_proportions %>%
   left_join(columnas_adicionales, by = c("sub" = "ID_check"))
 
-# Remover columna grupo si no la necesitas
-model_free_proportions_v2 <- model_free_proportions_v2 %>%
-  select(-grupo)
 
 # Redondear todas las columnas numéricas a 4 decimales
 model_free_proportions_v2 <- model_free_proportions_v2 %>%
