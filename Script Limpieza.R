@@ -774,6 +774,7 @@ write.csv(datos_clean, "datos_final.csv")
 # Load Data Set
 datos = read_csv("datos_clean.csv")
 
+
 # Convertir de formato wide a long
 datos_long <- datos %>%
   # Seleccionar solo las columnas relevantes para la transformación
@@ -847,6 +848,9 @@ datos_long <- datos %>%
   mutate(
     sub = ID_check,
     
+    # AGREGAR LA COLUMNA TRIAL
+    trial = trials,  # <-- AQUÍ SE AGREGA LA COLUMNA DE TRIALS
+    
     # Transformar decision
     decision = case_when(
       condicion == 1 ~ 1,  # Trabajar
@@ -890,11 +894,12 @@ datos_long <- datos %>%
     )
   ) %>%
   
-  # Seleccionar columnas finales
-  select(sub, decision, reward, effort, agent, success, grupo = grupo_num) %>%
+  # Seleccionar columnas finales (INCLUYENDO TRIAL)
+  select(sub, trial, decision, reward, effort, agent, success, grupo = grupo_num) %>%
   
-  # Ordenar
-  arrange(sub)
+  # Ordenar por sub y trial
+  arrange(sub, trial)
+
 
 # Save Data long
 write.csv(datos_long, "datos_long.csv")
@@ -939,11 +944,6 @@ model_free_proportions <- datos_long %>%
   filter(decision != 2) %>%
   group_by(sub, grupo) %>%
   summarise(
-    # Proporción de ayuda (decision == 1) para Self y Other
-    # Ahora solo entre trabajo (1) y descanso (0)
-    HelpSelf = mean(decision[agent == 0] == 1, na.rm = TRUE),
-    HelpOther = mean(decision[agent == 1] == 1, na.rm = TRUE),
-    
     # Proporciones por recompensa para Self (agent == 0) - Solo 3 niveles
     SelfRew1 = mean(decision[agent == 0 & reward == 1] == 1, na.rm = TRUE),
     SelfRew2 = mean(decision[agent == 0 & reward == 2] == 1, na.rm = TRUE),
@@ -976,6 +976,7 @@ model_free_proportions <- datos_long %>%
 # Unir con las columnas adicionales de datos_clean
 # Primero, asegurar que el formato de ID sea consistente
 columnas_adicionales$ID_check <- sprintf("%04d", as.integer(columnas_adicionales$ID_check))
+model_free_proportions$sub <- sprintf("%04d", as.integer(model_free_proportions$sub))
 
 # Hacer el join
 model_free_proportions_v2 <- model_free_proportions %>%
