@@ -652,8 +652,6 @@ datos_clean = datos_clean %>%
     zeros_TOTAL = round(zeros_TOTAL, 2)
 )
 
-
-
 # Calculate adjusted proportions (excluding zeros from denominator)
 datos_clean = datos_clean %>% 
   rowwise() %>% 
@@ -706,68 +704,64 @@ datos_clean = datos_clean %>%
 
 
 # Fail Proportion
-# Identificar las columnas de condición y fallo
-fallo_cols = grep("^fallo_", names(datos_clean), value = TRUE)[1:48]  # Solo los primeros 48 (excluir fallo_49 si existe)
+# Identify "fallo" columns
+fallo_cols = grep("^fallo_", names(datos_clean), value = TRUE)[1:48]
 
-# Calcular tasa de fallo
+# Calculate fail rate
 datos_clean = datos_clean %>% 
   rowwise() %>% 
   mutate(
-    # === TASA DE FALLO SELF ===
-    # Contar cuántas veces trabajó en SELF (valor = 1)
+    # Count work (value = 1) on condition_self
     trabajo_self_count = sum(c_across(all_of(self_cols)) == 1, na.rm = TRUE),
     
-    # Contar fallos cuando trabajó en SELF
-    # (fallo = 1 cuando la condición correspondiente SELF = 1)
+    # Count fails on SELF conditions
     fallos_self_count = sum(
       mapply(function(cond_col, fallo_col) {
         cond_val = get(cond_col)
         fallo_val = get(fallo_col)
-        # Contar fallo solo si trabajó (condición = 1) y falló (fallo = 1)
+        # Count fails ONLY when works is presented
         return(cond_val == 1 & !is.na(fallo_val) & fallo_val == 1)
       }, 
       self_cols, 
-      fallo_cols[1:24])  # Los primeros 24 corresponden a SELF
+      fallo_cols[1:24])
     ),
     
-    # Calcular tasa de fallo SELF
+    # Calculate fail proportion
     tasa_fallo_self = ifelse(
       trabajo_self_count > 0,
       (fallos_self_count / trabajo_self_count) * 100,
       NA_real_
     ),
     
-    # === TASA DE FALLO OTHER ===
-    # Contar cuántas veces trabajó en OTHER (valor = 1)
+    # Count work on condition OTHER
     trabajo_other_count = sum(c_across(all_of(other_cols)) == 1, na.rm = TRUE),
     
-    # Contar fallos cuando trabajó en OTHER
+    # Count fails
     fallos_other_count = sum(
       mapply(function(cond_col, fallo_col) {
         cond_val = get(cond_col)
         fallo_val = get(fallo_col)
-        # Contar fallo solo si trabajó (condición = 1) y falló (fallo = 1)
+        # Count fails ONLY when works is presented
         return(cond_val == 1 & !is.na(fallo_val) & fallo_val == 1)
       }, 
       other_cols, 
-      fallo_cols[25:48])  # Los últimos 24 corresponden a OTHER
+      fallo_cols[25:48])
     ),
     
-    # Calcular tasa de fallo OTHER
+    # Calculate fail proportion
     tasa_fallo_other = ifelse(
       trabajo_other_count > 0,
       (fallos_other_count / trabajo_other_count) * 100,
       NA_real_
     ),
     
-    # === TASA DE FALLO TOTAL ===
-    # Total de veces que trabajó (SELF + OTHER)
+    # Total times of working
     trabajo_total_count = trabajo_self_count + trabajo_other_count,
     
-    # Total de fallos
+    # Total fails
     fallos_total_count = fallos_self_count + fallos_other_count,
     
-    # Calcular tasa de fallo TOTAL
+    # Calculate fail proportion
     tasa_fallo_total = ifelse(
       trabajo_total_count > 0,
       (fallos_total_count / trabajo_total_count) * 100,
@@ -776,13 +770,13 @@ datos_clean = datos_clean %>%
     
   ) %>% 
   ungroup() %>%
-  # Redondear a 2 decimales y limpiar columnas auxiliares
+  # Round to 2 decimals
   mutate(
     tasa_fallo_self = round(tasa_fallo_self, 2),
     tasa_fallo_other = round(tasa_fallo_other, 2),
     tasa_fallo_total = round(tasa_fallo_total, 2)
   ) %>%
-  # Opcional: remover las columnas de conteo si no las necesitas
+  # Remove used columns
   select(-trabajo_self_count, -trabajo_other_count, -trabajo_total_count,
          -fallos_self_count, -fallos_other_count, -fallos_total_count)
 
@@ -798,8 +792,7 @@ write.csv(datos_clean, "datos_final.csv")
 # Load Data Set
 datos = read_csv("datos_clean.csv")
 
-
-# Convertir de formato wide a long
+# Transform from wide to long format
 datos_long <- datos %>%
   # Seleccionar solo las columnas relevantes para la transformación
   select(ID_check, grupo, 
@@ -808,10 +801,10 @@ datos_long <- datos %>%
          matches("^esfuerzo_\\d+_\\d+$"),
          matches("^fallo_\\d+$")) %>%
   
-  # Crear una fila por participante para procesar
+  # Create a row by participant
   rowwise() %>%
   
-  # Para cada participante, crear los 48 trials
+  # For every participant create 48 trials
   summarise(
     ID_check = ID_check,
     grupo = grupo,
@@ -820,70 +813,89 @@ datos_long <- datos %>%
   ) %>%
   unnest(trials) %>%
   
-  # Extraer valores para cada trial
+  # Extract values for every trial
   mutate(
     trial_str = sprintf("%02d", trials),
     
-    # Obtener condición (SELF o OTHER)
+    # SELF o OTHER condition
     condicion = map2_dbl(ID_check, trial_str, function(id, t) {
-      col_name <- if(as.numeric(t) <= 24) {
-        paste0("condicion_SELF_", t)
+      # Determine condition (self or other( based on trial number)
+      if(as.numeric(t) <= 24) {
+        col_name <- paste0("condicion_SELF_", t)
       } else {
-        paste0("condicion_OTHER_", t)
+        # Trials 25-48 = Other condition
+        col_name <- paste0("condicion_OTHER_", t)
       }
-      datos[datos$ID_check == id, col_name][[1]]
+      
+      # Obtain value of the columns
+      if(col_name %in% names(datos)) {
+        datos[datos$ID_check == id, col_name][[1]]
+      } else {
+        NA_real_
+      }
     }),
     
-    # Obtener reward
+    # Obtain real value for reward
+    decision_value = condicion, 
+    
+    # Obtain reward value
     reward_val = map2_dbl(ID_check, trial_str, function(id, t) {
-      # Buscar columna que contenga reward y termine con el número de trial
-      col_pattern <- paste0("reward_\\d+_", t, "$")
-      col_name <- grep(col_pattern, names(datos), value = TRUE)[1]
-      if(!is.na(col_name)) {
-        val <- datos[datos$ID_check == id, col_name][[1]]
-        # Extraer el valor de reward del nombre de la columna
-        as.numeric(str_extract(col_name, "\\d+(?=_\\d+$)"))
+      col_pattern <- paste0("_", t, "$")
+      reward_cols <- grep(paste0("^reward_.*", col_pattern), names(datos), value = TRUE)
+      
+      if(length(reward_cols) > 0) {
+        col_name <- reward_cols[1]
+        # Extract number of reward by column name
+        reward_num <- as.numeric(str_extract(col_name, "(?<=reward_)\\d+(?=_)"))
+        return(reward_num)
       } else {
         NA_real_
       }
     }),
     
-    # Obtener esfuerzo
+    # Obtain effort by column name
     esfuerzo_val = map2_dbl(ID_check, trial_str, function(id, t) {
-      col_pattern <- paste0("esfuerzo_\\d+_", t, "$")
-      col_name <- grep(col_pattern, names(datos), value = TRUE)[1]
-      if(!is.na(col_name)) {
-        val <- datos[datos$ID_check == id, col_name][[1]]
-        # Extraer el valor de esfuerzo del nombre de la columna
-        as.numeric(str_extract(col_name, "\\d+(?=_\\d+$)"))
+      # Seach columns that ends with trial number
+      col_pattern <- paste0("_", t, "$")
+      esfuerzo_cols <- grep(paste0("^esfuerzo_.*", col_pattern), names(datos), value = TRUE)
+      
+      if(length(esfuerzo_cols) > 0) {
+        col_name <- esfuerzo_cols[1]
+        # Extract effort by column name
+        esfuerzo_num <- as.numeric(str_extract(col_name, "(?<=esfuerzo_)\\d+(?=_)"))
+        return(esfuerzo_num)
       } else {
         NA_real_
       }
     }),
     
-    # Obtener fallo
+    # Obtein Fail
     fallo_val = map2_dbl(ID_check, trial_str, function(id, t) {
       col_name <- paste0("fallo_", t)
-      datos[datos$ID_check == id, col_name][[1]]
+      if(col_name %in% names(datos)) {
+        datos[datos$ID_check == id, col_name][[1]]
+      } else {
+        NA_real_
+      }
     })
   ) %>%
   
-  # Aplicar transformaciones
+  # Apply changes
   mutate(
     sub = ID_check,
     
-    # AGREGAR LA COLUMNA TRIAL
-    trial = trials,  # <-- AQUÍ SE AGREGA LA COLUMNA DE TRIALS
+    # ADD TRIAL Column
+    trial = trials,
     
-    # Transformar decision
+    # Transform desition
     decision = case_when(
-      condicion == 1 ~ 1,  # Trabajar
-      condicion == 2 ~ 0,  # Descansar
-      condicion == 0 ~ 2,  # Omisión
+      decision_value == 1 ~ 1,  # Trabajar
+      decision_value == 2 ~ 0,  # Descansar  
+      decision_value == 0 ~ 2,  # Omisión
       TRUE ~ NA_integer_
     ),
     
-    # Transformar reward
+    # Transform reward
     reward = case_when(
       reward_val == 2 ~ 1,
       reward_val == 6 ~ 2,
@@ -891,7 +903,7 @@ datos_long <- datos %>%
       TRUE ~ NA_integer_
     ),
     
-    # Transformar effort
+    # Transform effort
     effort = case_when(
       esfuerzo_val == 50 ~ 1,
       esfuerzo_val == 65 ~ 2,
@@ -903,14 +915,14 @@ datos_long <- datos %>%
     # Agent
     agent = ifelse(trials <= 24, 0, 1),
     
-    # Success
+    # Success 
     success = case_when(
       is.na(fallo_val) ~ 0,
       fallo_val == 1 ~ 1,
       TRUE ~ 0
     ),
     
-    # Grupo
+    # Group
     grupo_num = case_when(
       grupo == "Control" ~ 0,
       grupo == "Vulnerable" ~ 1,
@@ -918,28 +930,27 @@ datos_long <- datos %>%
     )
   ) %>%
   
-  # Seleccionar columnas finales (INCLUYENDO TRIAL)
+  # Select columns finals
   select(sub, trial, decision, reward, effort, agent, success, grupo = grupo_num) %>%
   
-  # Ordenar por sub y trial
+  # Order
   arrange(sub, trial)
 
-
 # Save Data long
-write.csv(datos_long, "datos_long.csv")
+write.csv(datos_long, "datos_long.csv", row.names = FALSE)
+
 
 
 # ===========================
 # Part 5
 # ANOVA Data
 
-
-# Leer datos
+# Read data
 datos_long <- read.csv("datos_long.csv")
 datos_clean <- read.csv("datos_final.csv")
 
 
-# Verificar qué participante(s) podrían tener solo omisiones
+# Verify participants answers and omitions
 participantes_con_datos <- datos_long %>%
   filter(decision != 2) %>%
   pull(sub) %>%
@@ -949,12 +960,12 @@ participantes_totales <- unique(datos_long$sub)
 participantes_faltantes <- setdiff(participantes_totales, participantes_con_datos)
 
 if(length(participantes_faltantes) > 0) {
-  cat("Participante(s) con solo omisiones:", participantes_faltantes, "\n")
+  cat("Participant with ONLY omitions:", participantes_faltantes, "\n")
 }
-# Participante(s) con solo omisiones: 2939 
+# Participant with ONLY omitions: 2939 
 
 
-# Seleccionar las columnas que necesitamos de datos_clean
+# Select proportions and columns of interests
 columnas_adicionales <- datos_clean %>%
   select(ID_check,
          trabajo_self, trabajo_other, trabajo_total,
@@ -962,56 +973,57 @@ columnas_adicionales <- datos_clean %>%
          trabajo_self_ajustado, trabajo_other_ajustado, trabajo_total_ajustado,
          tasa_fallo_self, tasa_fallo_other, tasa_fallo_total)
 
-# Calcular proporciones agregadas por participante (EXCLUYENDO OMISIONES)
+# Calculate averaging
 model_free_proportions <- datos_long %>%
-  # Filtrar para excluir omisiones (decision == 2)
+  # Filter to exclude omitions (2)
   filter(decision != 2) %>%
   group_by(sub, grupo) %>%
   summarise(
-    # Proporciones por recompensa para Self (agent == 0) - Solo 3 niveles
+    # Proportion for reward (SELF)
     SelfRew1 = mean(decision[agent == 0 & reward == 1] == 1, na.rm = TRUE),
     SelfRew2 = mean(decision[agent == 0 & reward == 2] == 1, na.rm = TRUE),
     SelfRew3 = mean(decision[agent == 0 & reward == 3] == 1, na.rm = TRUE),
     
-    # Proporciones por recompensa para Other (agent == 1) - Solo 3 niveles
+    # Proportion for reward (OTHER)
     OtherRew1 = mean(decision[agent == 1 & reward == 1] == 1, na.rm = TRUE),
     OtherRew2 = mean(decision[agent == 1 & reward == 2] == 1, na.rm = TRUE),
     OtherRew3 = mean(decision[agent == 1 & reward == 3] == 1, na.rm = TRUE),
     
-    # Proporciones por esfuerzo para Self (agent == 0) - Solo 4 niveles
+    # Proportion for effort (SELF)
     SelfEff1 = mean(decision[agent == 0 & effort == 1] == 1, na.rm = TRUE),
     SelfEff2 = mean(decision[agent == 0 & effort == 2] == 1, na.rm = TRUE),
     SelfEff3 = mean(decision[agent == 0 & effort == 3] == 1, na.rm = TRUE),
     SelfEff4 = mean(decision[agent == 0 & effort == 4] == 1, na.rm = TRUE),
     
-    # Proporciones por esfuerzo para Other (agent == 1) - Solo 4 niveles
+    # Proportion for effort (OTHER)
     OtherEff1 = mean(decision[agent == 1 & effort == 1] == 1, na.rm = TRUE),
     OtherEff2 = mean(decision[agent == 1 & effort == 2] == 1, na.rm = TRUE),
     OtherEff3 = mean(decision[agent == 1 & effort == 3] == 1, na.rm = TRUE),
     OtherEff4 = mean(decision[agent == 1 & effort == 4] == 1, na.rm = TRUE),
     
-    # Proporción total de trabajo (ya excluye omisiones por el filter inicial)
+    # Total proportion
     WorkSelf = mean(decision[agent == 0] == 1, na.rm = TRUE),
     WorkOther = mean(decision[agent == 1] == 1, na.rm = TRUE),
     
     .groups = 'drop'
   )
 
-# Unir con las columnas adicionales de datos_clean
-# Primero, asegurar que el formato de ID sea consistente
+# Join datasets with ID matching
 columnas_adicionales$ID_check <- sprintf("%04d", as.integer(columnas_adicionales$ID_check))
 model_free_proportions$sub <- sprintf("%04d", as.integer(model_free_proportions$sub))
 
-# Hacer el join
+# Join between average and proportion columns
 model_free_proportions_v2 <- model_free_proportions %>%
   left_join(columnas_adicionales, by = c("sub" = "ID_check"))
 
 
-# Redondear todas las columnas numéricas a 4 decimales
+# Round to 4 decimals
 model_free_proportions_v2 <- model_free_proportions_v2 %>%
   mutate(across(where(is.numeric) & !sub, ~round(., 4)))
 
-# Guardar el resultado
+# Save dataset
 write.csv(model_free_proportions, "datos_analisis.csv", row.names = FALSE)
 write.csv(model_free_proportions_v2, "datos_analisis_v2.csv", row.names = FALSE)
+
+
 
